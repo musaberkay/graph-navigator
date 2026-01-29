@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: graph-navigator-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: graphdb
+      MYSQL_USER: graphuser
+      MYSQL_PASSWORD: graphpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - graph-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: graph-navigator-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Application
+      APP_NAME: graph-navigator
+      DEBUG: "false"
+      LOG_LEVEL: info
+      
+      # Database
+      DATABASE_URL: mysql+asyncmy://graphuser:graphpassword@db:3306/graphdb
+      DB_POOL_SIZE: 5
+      DB_MAX_OVERFLOW: 10
+      
+      # API
+      API_V1_PREFIX: ""
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - graph-network
+    command: >
+      sh -c "
+        echo 'Waiting for database to be ready...' &&
+        sleep 5 &&
+        echo 'Running database migrations...' &&
+        alembic upgrade head &&
+        echo 'Seeding database...' &&
+        python scripts/seed_database.py &&
+        echo 'Starting API server...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  graph-network:
+    driver: bridge
