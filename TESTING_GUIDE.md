@@ -421,22 +421,6 @@ docker-compose up --build
 
 ---
 
-## Quick Success Checklist
-
-- [ ] Services start without errors
-- [ ] Health check returns 200
-- [ ] API docs accessible
-- [ ] `/nodes/1/connected` returns 23 nodes
-- [ ] Response includes depth information
-- [ ] Depth ranges from 1-6
-- [ ] Can create nodes and edges
-- [ ] Nonexistent nodes return 404
-- [ ] Invalid input returns 422
-- [ ] Tests pass
-- [ ] Logs show no errors
-
----
-
 ## Common Issues & Solutions
 
 ### Port 8000 in Use
