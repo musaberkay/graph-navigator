@@ -96,51 +96,91 @@ class GraphService:
     ) -> List[ConnectedNodeInfo]:
         """
         Get all nodes connected to the given node using a single recursive query.
-        
-        Uses MySQL's WITH RECURSIVE CTE to traverse the graph efficiently.
+
+        Uses WITH RECURSIVE CTE to traverse the graph efficiently.
         Returns nodes with their depth from the source node.
+        Supports both MySQL and SQLite dialects.
         """
         # First verify the source node exists
         source_node = await GraphService.get_node(db, node_id)
         if not source_node:
             return None
-        
+
+        # Detect database dialect
+        dialect = db.bind.dialect.name
+
         # Recursive CTE query to find all connected nodes
         # Uses path tracking to detect and avoid cycles
-        query = text("""
-            WITH RECURSIVE node_tree AS (
-                -- Base case: direct children of the source node
-                SELECT
-                    e.target_node_id as node_id,
-                    1 as depth,
-                    CAST(CONCAT(',', :source_node_id, ',', e.target_node_id, ',') AS CHAR(4000)) as path
-                FROM edges e
-                WHERE e.source_node_id = :source_node_id
+        if dialect == "sqlite":
+            query = text("""
+                WITH RECURSIVE node_tree AS (
+                    -- Base case: direct children of the source node
+                    SELECT
+                        e.target_node_id as node_id,
+                        1 as depth,
+                        ',' || :source_node_id || ',' || e.target_node_id || ',' as path
+                    FROM edges e
+                    WHERE e.source_node_id = :source_node_id
 
-                UNION ALL
+                    UNION ALL
 
-                -- Recursive case: children of previously found nodes
-                -- Only visit nodes not already in the current path (cycle detection)
+                    -- Recursive case: children of previously found nodes
+                    -- Only visit nodes not already in the current path (cycle detection)
+                    SELECT
+                        e.target_node_id as node_id,
+                        nt.depth + 1 as depth,
+                        nt.path || e.target_node_id || ',' as path
+                    FROM edges e
+                    INNER JOIN node_tree nt ON e.source_node_id = nt.node_id
+                    WHERE nt.path NOT LIKE '%,' || e.target_node_id || ',%'
+                      AND LENGTH(nt.path) < 3900
+                      AND nt.depth < 100
+                )
                 SELECT
-                    e.target_node_id as node_id,
-                    nt.depth + 1 as depth,
-                    CONCAT(nt.path, e.target_node_id, ',') as path
-                FROM edges e
-                INNER JOIN node_tree nt ON e.source_node_id = nt.node_id
-                WHERE nt.path NOT LIKE CONCAT('%,', e.target_node_id, ',%')
-                  AND CHAR_LENGTH(nt.path) < 3900  -- Stop before exceeding path column limit
-                  AND nt.depth < 100  -- Safety limit for very deep graphs
-            )
-            -- Get nodes with their minimum depth
-            SELECT
-                n.id,
-                n.name,
-                MIN(nt.depth) as depth
-            FROM nodes n
-            INNER JOIN node_tree nt ON n.id = nt.node_id
-            GROUP BY n.id, n.name
-            ORDER BY depth, n.id
-        """)
+                    n.id,
+                    n.name,
+                    MIN(nt.depth) as depth
+                FROM nodes n
+                INNER JOIN node_tree nt ON n.id = nt.node_id
+                GROUP BY n.id, n.name
+                ORDER BY depth, n.id
+            """)
+        else:
+            # MySQL syntax
+            query = text("""
+                WITH RECURSIVE node_tree AS (
+                    -- Base case: direct children of the source node
+                    SELECT
+                        e.target_node_id as node_id,
+                        1 as depth,
+                        CAST(CONCAT(',', :source_node_id, ',', e.target_node_id, ',') AS CHAR(4000)) as path
+                    FROM edges e
+                    WHERE e.source_node_id = :source_node_id
+
+                    UNION ALL
+
+                    -- Recursive case: children of previously found nodes
+                    -- Only visit nodes not already in the current path (cycle detection)
+                    SELECT
+                        e.target_node_id as node_id,
+                        nt.depth + 1 as depth,
+                        CONCAT(nt.path, e.target_node_id, ',') as path
+                    FROM edges e
+                    INNER JOIN node_tree nt ON e.source_node_id = nt.node_id
+                    WHERE nt.path NOT LIKE CONCAT('%,', e.target_node_id, ',%')
+                      AND CHAR_LENGTH(nt.path) < 3900  -- Stop before exceeding path column limit
+                      AND nt.depth < 100  -- Safety limit for very deep graphs
+                )
+                -- Get nodes with their minimum depth
+                SELECT
+                    n.id,
+                    n.name,
+                    MIN(nt.depth) as depth
+                FROM nodes n
+                INNER JOIN node_tree nt ON n.id = nt.node_id
+                GROUP BY n.id, n.name
+                ORDER BY depth, n.id
+            """)
         
         result = await db.execute(query, {"source_node_id": node_id})
         rows = result.fetchall()

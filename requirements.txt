@@ -9,6 +9,7 @@ SQLAlchemy==2.0.25
 alembic==1.13.1
 asyncmy==0.2.9
 aiomysql==0.2.0
+aiosqlite==0.19.0
 mysqlclient==2.2.1
 cryptography==42.0.2
 

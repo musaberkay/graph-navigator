@@ -478,62 +478,6 @@ For reference, expected performance on a modern laptop:
 
 ---
 
-## What to Look For (Evaluator Checklist)
-
-### Architecture
-
-- [ ] Clean separation of concerns (api/service/model layers)
-- [ ] Proper use of dependency injection
-- [ ] Async/await pattern throughout
-- [ ] Type hints on all functions
-
-### Database
-
-- [ ] Proper foreign key constraints
-- [ ] Indexes on critical columns
-- [ ] Migration system in place
-- [ ] Seed data creates complex graph
-
-### API
-
-- [ ] RESTful design
-- [ ] Proper HTTP status codes
-- [ ] Request validation with Pydantic
-- [ ] Auto-generated documentation
-- [ ] Error messages are clear
-
-### The Key Feature
-
-- [ ] **Single recursive SQL query** (not multiple queries)
-- [ ] Returns all reachable nodes
-- [ ] Includes depth information
-- [ ] Handles cycles (depth limit)
-- [ ] Works for any starting node
-
-### Code Quality
-
-- [ ] Readable and maintainable
-- [ ] Documented with docstrings
-- [ ] No obvious bugs
-- [ ] Follows Python conventions
-- [ ] Error handling in place
-
-### DevOps
-
-- [ ] Docker containers work
-- [ ] Services orchestrated properly
-- [ ] Health checks implemented
-- [ ] Logs are informative
-
-### Documentation
-
-- [ ] README is comprehensive
-- [ ] Setup instructions are clear
-- [ ] Architecture decisions explained
-- [ ] Trade-offs acknowledged
-
----
-
 ## Need Help?
 
 If something doesn't work:
@@ -542,7 +486,3 @@ If something doesn't work:
 2. Verify ports: `netstat -an | grep 8000`
 3. Clean start: `docker-compose down -v && docker-compose up --build`
 4. Check README.md troubleshooting section
-
----
-
-**Happy Testing! 🚀**

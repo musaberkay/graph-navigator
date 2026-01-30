@@ -148,6 +148,7 @@ async def seed_database():
                 Edge(source_node_id=node2.id, target_node_id=node23.id, label="lower-4-level"),
                 Edge(source_node_id=node23.id, target_node_id=node22.id, label="same-level"),
                 Edge(source_node_id=node22.id, target_node_id=node2.id, label="upper-level"),
+                Edge(source_node_id=node3.id, target_node_id=node3.id, label="same-edge"),
             ])
             
             session.add_all(edges)
